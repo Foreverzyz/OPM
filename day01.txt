@@ -1,0 +1,193 @@
+	1.功能分析与设计
+	2.注册与登录操作
+	3.添加商品操作
+	4.显示商品信息
+	
+	
+	---------------------------------------
+	订单与用户之间存在关系:1 对 多  
+		要在订单表中生成一个外键来描述关系。
+		
+	订单项:描述的商品与订单之间的关系
+		多对多关系
+		
+		需要一个中间表来描述它们关系
+		
+	----------------------------------
+	创建数据库后，进行数据库 通过 source导入 sql文件
+
+	--------------------------------------------------
+	关于在浏览器上直接输入  http://www.bookEstore.com就可以访问工程问题
+		
+		1.在tomcat/conf/server.xml文件中配置一个虚拟主机
+			<Host name="www.bookEstore.com"  appBase="D:\j2eeWorkspaces\bookEstore"
+				unpackWARs="true" autoDeploy="true">
+
+		   
+				<Valve className="org.apache.catalina.valves.AccessLogValve" directory="logs"
+				   prefix="localhost_access_log." suffix=".txt"
+				   pattern="%h %l %u %t &quot;%r&quot; %s %b" />
+				 
+				<Context path="" docBase="D:\j2eeWorkspaces\bookEstore\WebRoot"/>  
+				   
+		  </Host>
+		  
+		2.需要在C:\Windows\System32\drivers\etc路径下查找一个配置文件hosts
+			在这个文件中配置
+			127.0.0.1       www.bookEstore.com
+			
+			
+		3.可以在server.xml文件中
+			<Engine name="Catalina" defaultHost="www.bookEstore.com">
+			
+	===============================================================================
+	1.注册与登录
+		
+		1.注册
+			1.注册功能演示
+			2.代码实现
+				regist.jsp页面------>UserServlet----->UserDao
+				
+				UserServlet中:
+					1.获取验证码，判断它是否正确，如果正确，向下执行.
+					  如果不正确，跳转到regist.jsp页面，显示错误信息
+					  
+					2.将所以请求参数封装到User对象中.在User类中创建一个validateRegist,
+					这个方法会对请求参数进行校验,将错误信息封装到一个Map集合，在Servlet中
+					判断集合长度是否>0就可以判断是否有错误信息，如果有，跳转到regist.jsp
+					显示错误信息.
+					
+					3.调用UserService去完成注册操作  调用regist方法,传递User参数
+						
+					4.在regist方法中做了两件事情
+						1.调用UserDao完成注册操作
+						2.给注册的用户发送了一封激活邮件
+						
+						
+				关于md5加密:
+					在mysql数据库中通过  md5(字段);
+						update users set password=md5(password);
+						
+					在java中可以通过代码实现
+						MessageDigest.getInstance("md5")
+						
+			
+		2.登录操作
+			index.jsp---->page.jsp页面 有登录窗口
+			
+			会有登录窗口，提交时会访问UserServlet，会带一个请求参数  method=login
+			在UserServlet中就可以判断当前操作是登录操作
+			就会调用UserServlet中的login方法
+			
+			
+			UserServlet---UserService----->UserDao
+				
+				1.userServlet中收集了用户名与密码
+				2.UserService中调用UserDao中查找用户操作  findUserByUserNameAndPassword
+				3.在UserService中判断了一下得到的User对象是否为null,如果为null,直接抛出一个自定义异常.
+				4.如果查找到了用户，但是用户未激活，那么也不能登录成功，抛出了一个自定义异常.
+				5.在UserServlet中捕获自定义异常，在page.jsp页面显示错误信息.
+				6.在UserServlet中判断用户不为空，就将User存储到session中，并跳转到首面index.jsp，
+				  自动跳转到page.jsp页面.
+				  
+			
+			1.记住用户名
+				当用户登录成功后，并且勾选了记住用户名操作，我们将用户的username存储到cookie中,
+				持久化存储，并携带到浏览器端.
+				在页面上通过el表达式获取username显示出来.
+				
+				在cookie中是否能存储中文，那么要是用户名是中文，我们可以存储username的utf-8码.
+				在页面上，通过js将utf-8码解码.
+				
+			2.自动登录操作
+				当用户登录成功后，并且勾选自动登录操作，我们将username,password都存储到cookie中,
+				持久化存储，并携带到浏览器端.
+				
+				当下一次在访问时，我们可以通过Filter来拦截我们请求，判断cookie中是否有我们存储username,
+				passowrd的这个cookie
+				
+				注意:自动登录时，有以下情况是不需要进行自动登录的.
+					1.用户已经登录
+					2.用户访问的路径是  login  regist这样的操作。
+					
+					
+			3.注销操作
+				我们用户登录成功后，会将用户存储到session中。
+				注销操作就是将session销毁就可以以。
+				session.invalidate()方法.
+				
+				点击注销访问UserServlet?method=logout
+						
+						
+		------------------------------------------------------------------------------------------
+		3.关于商品的添加
+			添加商品操作其时是一个文件上传操作.添加商品时，需要添加一个商品图片，我们使用文件上传.
+			commons-fileupload
+			
+			浏览器:
+				1.method=post
+				2.encType="multipart/form-data"
+				3.<input type="file" name="f">组件
+				
+			点击添加图书连接，会访问 addProduct.jsp页面	
+			
+			AddProductServlet这个servlet中有两个工作:
+				1.完成书箱图片的保存(上传操作)
+				2.将信息存储到数据库.
+					
+					
+			创建了一个Map<String,String[]>它用于封装所有请求参数
+			通过BeanUtils.populate方法将请求参数直接封装到Product类中。
+
+			可以调用ProductService中的添加图书的方法，完成图书添加操作
+
+			当图片添加成功后，我们会跳转到index.jsp页面.
+   -----------------------------------------------------------------------------
+		4.关于查询图书操作
+			
+			1.查询全部
+				index.jsp页面直接跳转到ProductServlet中.
+				执行findAll操作，也就是查询出全部信息.
+				
+				调用ProductService----ProductDao完成查询操作，得到所有商品信息List<Product>
+				
+				转发到page.jsp页面，在page.jsp页面展示所有商品信息.
+				
+				
+				
+			2.根据id查询
+				点击抢购书籍，会访问ProductServlet,
+				product?method=findById&id=xxx
+				会将这本书籍的id也携带到服务器端.
+				
+				会调用ProductService的findByid方法，根据id查找书籍,也就是得到一个Product对象.
+				
+				查找到商品后，跳转到productInfo.jsp页面，展示了商品信息
+				
+				上传的所有图片大小不确定的，怎样保证显示商品时，它的大小？
+					
+				通过一个工具类可以保证当前的商品的图片大小一致
+				
+				
+				PicUtils putils = new PicUtils(this.getServletContext()
+					.getRealPath(product.getImgurl()));
+				putils.resize(200, 200);
+				
+				当添加商品时，会生成商品图片的一个缩略图，以方便我们在页面上显示。
+				 
+				在Product类中提供了一个getImgurl_s方法 ,这个方法，会根据商品图片的
+				路径，获取到缩略图片的路径，我们就可以直接在页面上通过el表达工，获取
+				缩略图的路径，显示出这个缩略图.
+				
+				
+				
+					
+			
+
+
+			
+			
+						
+	
+		
+		
